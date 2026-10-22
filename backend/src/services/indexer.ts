@@ -254,6 +254,31 @@ function getFallbackPollInterval(): number {
   return Math.max(1000, FALLBACK_POLL_INTERVAL_MS);
 }
 
+/**
+ * Indexer backfill consistency rule
+ * --------------------------------
+ * The `indexer_cursor.last_ledger_sequence` row is the persisted high-water
+ * mark of ledgers that have been fully processed and whose events are
+ * durably stored in `stream_events`.
+ *
+ * Invariant: on success, the checkpoint advances only to a ledger at or
+ * beyond the highest event ledger that was committed in this poll.  On
+ * failure (RPC error, partial page, crash), the checkpoint is NOT advanced
+ * and retains its previous value, so the next poll resumes from the last
+ * fully committed ledger.
+ *
+ * Because event writes and the checkpoint write are separate operations
+ * (events are committed page-by-page; the checkpoint is saved after the
+ * poll completes), a crash between them can leave events persisted ahead
+ * of the checkpoint.  That is safe: the dedup index on
+ * stream_events(stream_id, event_type, ledger_sequence) makes reprocessing
+ * idempotent, and the next poll simply re-reads from the stale checkpoint.
+ *
+ * Callers must not report a poll as successful unless the checkpoint
+ * reflects the events actually committed.  `saveCheckpoint` is only
+ * reached after all pages have been processed without error.
+ */
+
 function loadCheckpoint(db: any): void {
   try {
     const row = db

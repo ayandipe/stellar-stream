@@ -71,7 +71,7 @@ export function recordEventWithDb(
 ): void {
   db.prepare(
     `INSERT OR IGNORE INTO stream_events (stream_id, event_type, ledger_sequence, timestamp, actor, amount, metadata)
-     VALUES (@streamId, @eventType, @ledgerSequence, @timestamp, @actor, @amount, @metadata),`,
+     VALUES (@streamId, @eventType, @ledgerSequence, @timestamp, @actor, @amount, @metadata)`,
   ).run({
     streamId,
     eventType,
